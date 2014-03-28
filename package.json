@@ -1,0 +1,11 @@
+{
+  "name": "pushgateway",
+  "version": "0.0.0",
+  "description": "A server that exposes a simple API to push notification servers",
+  "main": "app/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Brice Carpentier <brice@daknet.org>",
+  "license": "ISC"
+}
