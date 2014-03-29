@@ -7,5 +7,20 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Brice Carpentier <brice@daknet.org>",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "apnagent": "^1.1.1",
+    "node-gcm": "^0.9.9",
+    "nconf": "^0.6.9",
+    "hat": "0.0.3",
+    "koa": "^0.5.2",
+    "koa-route": "^1.1.1",
+    "redis": "^0.10.1",
+    "co": "^3.0.5",
+    "co-body": "0.0.1",
+    "var": "0.0.8"
+  },
+  "engines": {
+    "node": ">=0.11.2"
+  }
 }
