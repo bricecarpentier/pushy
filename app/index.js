@@ -11,8 +11,8 @@ var agents = require('./agents');
 
 nconf.env().argv();
 
-const REDIS_HOST     = nconf.get('DB_REDIS_HOST');
-const REDIS_PORT     = parseInt(nconf.get('DB_REDIS_PORT'), 10);
+const REDIS_HOST     = nconf.get('DB_REDIS_HOST') || "localhost";
+const REDIS_PORT     = parseInt(nconf.get('DB_REDIS_PORT') || "6379", 10) ;
 const REDIS_PASSWORD = nconf.get('DB_REDIS_PASSWORD');
 const REDIS_INDEX    = nconf.get('DB_REDIS_INDEX');
 
