@@ -17,14 +17,14 @@ Object.defineProperty(Agent.prototype, "actualAgent", {
     writable: true
 })
 
-Agent.prototype.send = function(token, message, callback) {
+Agent.prototype.send = function(db, token, message, callback) {
     console.log("Agent::send");
 };
 
 var GcmAgent = function(actualAgent) {Agent.call(this, actualAgent);};
 GcmAgent.prototype = Object.create(Agent.prototype);
 GcmAgent.prototype.constructor = GcmAgent;
-GcmAgent.prototype.send = function(tokens, message, callback) {
+GcmAgent.prototype.send = function(db, tokens, message, callback) {
     if (!(tokens instanceof Array))
         tokens = [tokens];
     console.log("GcmAgent::send", tokens, message);
@@ -47,8 +47,28 @@ var ApnAgent = function(actualAgent, feedback) {
 };
 ApnAgent.prototype = Object.create(Agent.prototype);
 ApnAgent.prototype.constructor = ApnAgent;
-ApnAgent.prototype.send = function(token, message, callback) {
-    console.log("ApnAgent::send");
+ApnAgent.prototype.send = function(db, tokens, message, callback) {
+    var self = this;
+    co(function *() {
+        var token;
+        var functions = [];
+        for (var i=0,l=tokens.length ; i<l ; i++) {
+            token = tokens[i];
+            var isBlacklisted = yield db.isismember.bind(db, 'devices_to_remove:ios:' + token);
+            if (isBlacklisted)
+                continue;
+            var m = self.actualAgent.createMessage();
+            m.alert(message.alert)
+            if (message.badge)
+                m.badge(message.badge);
+            if (message.sound)
+                m.sound(message.sound);
+            m.device(token);
+            functions.push(m.send.bind(m));
+        }
+
+        callback(yield functions);
+    });
 }
 
 var Agents = function() {
@@ -83,39 +103,53 @@ Agents.prototype.getAgentsFor = function(app, deviceType) {
 
 var agents = new Agents();
 
-module.exports = {
-    send: function send(app, devices, message, callback) {
-        var iosDevices = filterDevicesAndMapTokens(devices, "ios");
-        var androidDevices = filterDevicesAndMapTokens(devices, "android");
+var o = Object.create({}, {
+    database: {
+        enumerable: false,
+        configurable: false,
+        get: function() {
+            return agents.database;
+        },
+        set: function(database) {
+            agents.database = database;
+        }
+    }
+});
+o.send = function send(app, devices, message, callback) {
+    var self = this;
 
-        var type;
-        if (iosDevices.length && androidDevices.length) {
-            type = undefined;
-        } else if (iosDevices.length) {
-            type = "ios";
-        } else {
-            type = "android";
+    var iosDevices = filterDevicesAndMapTokens(devices, "ios");
+    var androidDevices = filterDevicesAndMapTokens(devices, "android");
+
+    var type;
+    if (iosDevices.length && androidDevices.length) {
+        type = undefined;
+    } else if (iosDevices.length) {
+        type = "ios";
+    } else {
+        type = "android";
+    }
+
+    var a = agents.getAgentsFor(app, type);
+
+    co(function *() {
+        var functions = [];
+        if (iosDevices.length)
+            functions.push(a.ios.send.bind(self.database, a.ios, devices, message));
+        if (androidDevices.length)
+            functions.push(a.android.send.bind(self.database, a.android, devices, message));
+
+        try {
+            var res = yield(functions);
+            callback(null, res);
+        } catch (err) {
+            callback(err);
         }
 
-        var a = agents.getAgentsFor(app, type);
+    })();
+};
 
-        co(function *() {
-            var functions = [];
-            if (iosDevices.length)
-                functions.push(a.ios.send.bind(a.ios, devices, message));
-            if (androidDevices.length)
-                functions.push(a.android.send.bind(a.android, devices, message));
-
-            try {
-                var res = yield(functions);
-                callback(null, res);
-            } catch (err) {
-                callback(err);
-            }
-
-        })();
-    }
-}
+module.exports = o;
 
 function filterDevicesAndMapTokens(devices, deviceType) {
     return devices.filter(function(item) {return item.deviceType === deviceType;})
