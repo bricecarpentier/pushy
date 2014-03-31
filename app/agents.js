@@ -94,7 +94,7 @@ Agents.prototype.getAgentsFor = function(app, deviceType) {
     }
 
     if (!deviceType || (deviceType === "ios" && !this._agents[appId].ios)) {
-        this._agents[appId].ios = createApnAgent(app);
+        this._agents[appId].ios = createApnAgent(this.database, app);
     }
 
     var theseAgents = this._agents[appId];
@@ -164,7 +164,7 @@ function createGcmAgent(app) {
     return new GcmAgent(new gcmagent.Sender(gcmKey));
 };
 
-function createApnAgent(app) {
+function createApnAgent(db, app) {
     var pfx = app.apple_pfx;
     if (!pfx)
         throw new Error("a pfx file content must be provided");
