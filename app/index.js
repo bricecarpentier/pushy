@@ -2,7 +2,6 @@ var http = require('http');
 
 var nconf = require('nconf'),
     redis = require('redis'),
-    async = require('async'),
     koa   = require('koa'),
     route = require('koa-route'),
     parse = require('co-body');
