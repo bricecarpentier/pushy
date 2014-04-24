@@ -1,5 +1,5 @@
 {
-  "name": "pushy",
+  "name": "restypush",
   "version": "0.1.0",
   "description": "A server that exposes a simple API to push notification servers",
   "main": "app/core.js",
