@@ -89,7 +89,14 @@ var startPushy = function(options) {
         
         var results = yield agents.send.bind(agents, app, devices, message);
 
-        this.body = "OK";
+        try {
+            var results = yield agents.send.bind(agents, this.app, devices, message);
+            console.log("results:",results);
+            this.body = JSON.stringify(results);
+        } catch (err) {
+            console.log("error:", err);
+            this.body = "KO";
+        }
     }));
 
     app.listen(options.port || 3000);

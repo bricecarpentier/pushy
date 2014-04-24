@@ -17,17 +17,15 @@ Object.defineProperty(Agent.prototype, "actualAgent", {
     writable: true
 })
 
-Agent.prototype.send = function(db, token, message, callback) {
-    console.log("Agent::send");
+Agent.prototype.send = function(token, message, callback) {
 };
 
 var GcmAgent = function(actualAgent) {Agent.call(this, actualAgent);};
 GcmAgent.prototype = Object.create(Agent.prototype);
 GcmAgent.prototype.constructor = GcmAgent;
-GcmAgent.prototype.send = function(db, tokens, message, callback) {
+GcmAgent.prototype.send = function(tokens, message, callback) {
     if (!(tokens instanceof Array))
         tokens = [tokens];
-    console.log("GcmAgent::send", tokens, message);
 
     var m = new gcmagent.Message();
 
@@ -38,25 +36,52 @@ GcmAgent.prototype.send = function(db, tokens, message, callback) {
         parameters: message.payload
     });;
 
-    this.actualAgent.send(m, tokens, 4, callback);
+    this.actualAgent.send(m, tokens, 4, function(err, res) {
+        if (err)
+            callback(err);
+        else
+        {
+            var results = [];
+            for (var i=0,l=res.results.length ; i<l ; i++) {
+                var item = {
+                    deviceType: "android",
+                    token: tokens[i]
+                };
+                if (res.results[i].hasOwnProperty('error'))
+                    item.error = res.results[i].error;
+                results.push(item);
+            }
+            callback(null, results);    
+        }
+    });
+
+    
 };
 
-var ApnAgent = function(actualAgent, feedback) {
+var ApnAgent = function(database, actualAgent, feedback) {
+    this.database = database;
     Agent.call(this, actualAgent);
     this.feedback = feedback;
+    this.feedback.use(this.handleFeedback.bind(this));
+
 };
 ApnAgent.prototype = Object.create(Agent.prototype);
 ApnAgent.prototype.constructor = ApnAgent;
-ApnAgent.prototype.send = function(db, tokens, message, callback) {
+ApnAgent.prototype.send = function(tokens, message, callback) {
     var self = this;
     co(function *() {
         var token;
         var functions = [];
+        var timestamps = [];
+        var a = [];
         for (var i=0,l=tokens.length ; i<l ; i++) {
             token = tokens[i];
-            var isBlacklisted = yield db.isismember.bind(db, 'devices_to_remove:ios:' + token);
-            if (isBlacklisted)
-                continue;
+
+            a.push({
+                deviceType: "ios",
+                deviceToken: token,
+            });
+
             var m = self.actualAgent.createMessage();
             m.alert(message.alert)
             if (message.badge)
@@ -65,11 +90,31 @@ ApnAgent.prototype.send = function(db, tokens, message, callback) {
                 m.sound(message.sound);
             m.device(token);
             functions.push(m.send.bind(m));
+
+            var flagTimestamp = yield self.database.get.bind(self.database, 'devices_to_remove:ios:' + m.device().toString());
+            timestamps.push(flagTimestamp);
         }
 
-        callback(yield functions);
+        try {
+            yield(functions);
+
+            console.log(timestamps);
+            for (var j=0,m=a.length ; j<m ; j++) {
+                if (timestamps[j] != undefined)
+                    a[j].timestamp = parseInt(timestamps[j],10);
+            }
+
+            callback(null, a);
+        } catch (err) {
+            callback(err);
+        }
+    })();
+};
+ApnAgent.prototype.handleFeedback = function(device, timestamp, done) {
+    this.database.set('devices_to_remove:ios:' + device.toString(), timestamp.getTime(), function(err, res) {
+        done();
     });
-}
+};
 
 var Agents = function() {
     this._agents = {};
@@ -121,26 +166,21 @@ o.send = function send(app, devices, message, callback) {
     var iosDevices = filterDevicesAndMapTokens(devices, "ios");
     var androidDevices = filterDevicesAndMapTokens(devices, "android");
 
-    var type;
-    if (iosDevices.length && androidDevices.length) {
-        type = undefined;
-    } else if (iosDevices.length) {
-        type = "ios";
-    } else {
-        type = "android";
-    }
-
-    var a = agents.getAgentsFor(app, type);
+    var a = agents.getAgentsFor(app);
 
     co(function *() {
         var functions = [];
         if (iosDevices.length)
-            functions.push(a.ios.send.bind(self.database, a.ios, devices, message));
+            functions.push(a.ios.send.bind(a.ios, iosDevices, message));
         if (androidDevices.length)
-            functions.push(a.android.send.bind(self.database, a.android, devices, message));
+            functions.push(a.android.send.bind(a.android, androidDevices, message));
 
         try {
-            var res = yield(functions);
+            var results = yield(functions);
+            var res = [];
+            for (var i=0,l=results.length ; i<l ; i++) {
+                res = res.concat(results[i]);
+            }
             callback(null, res);
         } catch (err) {
             callback(err);
@@ -171,31 +211,24 @@ function createApnAgent(db, app) {
     var passphrase = app.apple_pfx_passphrase;
 
     var a = new apnagent.Agent();
+    if (app.apple_pfx_dev)
+        a.enable('sandbox');
     a.set('pfx', new Buffer(pfx, 'base64'));
-    if (passphrase)
-        a.set('passphrase', passphrase);
 
     a.connect(function(err) {
         if (err)
             console.log(err);
-        else
-            console.log('YEAH!');
     });
 
     var f = new apnagent.Feedback();
     f.set('pfx', new Buffer(pfx, 'base64'));
-    if (passphrase)
-        f.set('passphrase', passphrase);
+    if (app.apple_pfx_dev)
+        f.enable('sandbox');
 
     f.connect(function(err) {
         if (err)
             console.log(err);
-        else
-            console.log('YEAH Feedback');
     });
 
-    return new ApnAgent(a, f);
-
-
-
+    return new ApnAgent(db, a, f);
 };
