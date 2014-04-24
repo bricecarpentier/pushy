@@ -99,7 +99,11 @@ var startPushy = function(options) {
         }
     }));
 
-    app.listen(options.port || 3000);
+    var address = options.ip_address || "127.0.0.1";
+    var port = options.port || 3000;
+    app.listen(port, address, function() {
+        console.log("%s: Pushy started on %s:%d", Date(Date.now()), address, port);
+    });
 };
 
 
