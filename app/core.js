@@ -53,6 +53,7 @@ var startPushy = function(options) {
 
         console.log("looking for app:" + applicationId);
         var app = yield db.hgetall.bind(db, "app:" + applicationId);
+        console.log(JSON.stringify(app));
 
         if (!app) {
             this.throw('no application found for id "' + applicationId + '"', 404);
@@ -87,7 +88,7 @@ var startPushy = function(options) {
             }
         }
         
-        var results = yield agents.send.bind(agents, app, devices, message);
+        var results = yield agents.send.bind(agents, this.app, devices, message);
 
         try {
             var results = yield agents.send.bind(agents, this.app, devices, message);
@@ -107,8 +108,8 @@ var startPushy = function(options) {
 };
 
 
-function createDatabase(host, port, password, index) {
-    var db = redis.createClient(host, port);
+function createDatabase(port, host, password, index) {
+    var db = redis.createClient(port, host);
     if (password)
         db.auth(password);
 
