@@ -88,6 +88,9 @@ ApnAgent.prototype.send = function(tokens, message, callback) {
                 m.badge(message.badge);
             if (message.sound)
                 m.sound(message.sound);
+            if (message.payload) {
+                m.set(message.payload);
+            }
             m.device(token);
             functions.push(m.send.bind(m));
 
