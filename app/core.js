@@ -88,8 +88,6 @@ var startPushy = function(options) {
             }
         }
         
-        var results = yield agents.send.bind(agents, this.app, devices, message);
-
         try {
             var results = yield agents.send.bind(agents, this.app, devices, message);
             console.log("results:",results);
