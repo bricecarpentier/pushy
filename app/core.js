@@ -35,8 +35,6 @@ var startPushy = function(options) {
     });
 
     var require_app_authentication = function *(next) {
-        console.log('require_app_authentication');
-        console.log(this.request);
         var headers = this.request.header;
         var applicationId = headers['x-pushy-application-id'];
         var apiKey = headers['x-pushy-rest-api-key'];
@@ -51,9 +49,7 @@ var startPushy = function(options) {
             return;
         }
 
-        console.log("looking for app:" + applicationId);
         var app = yield db.hgetall.bind(db, "app:" + applicationId);
-        console.log(JSON.stringify(app));
 
         if (!app) {
             this.throw('no application found for id "' + applicationId + '"', 404);
@@ -90,10 +86,8 @@ var startPushy = function(options) {
         
         try {
             var results = yield agents.send.bind(agents, this.app, devices, message);
-            console.log("results:",results);
             this.body = JSON.stringify(results);
         } catch (err) {
-            console.log("error:", err);
             this.body = "KO";
         }
     }));
