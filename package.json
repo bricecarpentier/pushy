@@ -1,6 +1,6 @@
 {
   "name": "restypush",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "A server that exposes a simple API to push notification servers",
   "main": "app/core.js",
   "scripts": {
