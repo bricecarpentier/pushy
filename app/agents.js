@@ -89,7 +89,7 @@ ApnAgent.prototype.send = function(tokens, message, callback) {
             if (message.sound)
                 m.sound(message.sound);
             if (message.payload) {
-                m.set(message.payload);
+                m.set({ctx: message.payload});
             }
             m.device(token);
             functions.push(m.send.bind(m));
