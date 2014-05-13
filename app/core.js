@@ -68,7 +68,7 @@ var startPushy = function(options) {
     app.use(route.post('/1/push', require_app_authentication));
     app.use(route.post('/1/push', function *() {
 
-        var message = yield parse(this, {limit: '1kb'});
+        var message = yield parse(this, {limit: '100kb'});
         var devices = message.devices || [];
         delete message.devices;
 
